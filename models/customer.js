@@ -3,6 +3,13 @@
 const db = require("../db");
 const Reservation = require("./reservation");
 
+const queryBase = `SELECT c.id, 
+  c.first_name AS "firstName",  
+  c.last_name AS "lastName", 
+  c.phone, 
+  c.notes
+  FROM customers AS c`;
+
 /** Customer of the restaurant. */
 
 class Customer {
@@ -22,13 +29,8 @@ class Customer {
 
   static async all() {
     const results = await db.query(
-      `SELECT id, 
-         first_name AS "firstName",  
-         last_name AS "lastName", 
-         phone, 
-         notes
-       FROM customers
-       ORDER BY last_name, first_name`
+      `${queryBase}
+       ORDER BY c.last_name, c.first_name`
     );
     return results.rows.map(c => new Customer(c));
   }
@@ -37,12 +39,7 @@ class Customer {
 
   static async get(id) {
     const results = await db.query(
-      `SELECT id, 
-         first_name AS "firstName",  
-         last_name AS "lastName", 
-         phone, 
-         notes 
-        FROM customers WHERE id = $1`,
+      `${queryBase} WHERE c.id = $1`,
       [id]
     );
 
@@ -81,6 +78,30 @@ class Customer {
         [this.firstName, this.lastName, this.phone, this.notes, this.id]
       );
     }
+  }
+
+  /** search by name */
+  static async search(term) {
+    const searchTerm = '%' + term + '%';
+    const results = await db.query(`
+      ${queryBase}
+      WHERE LOWER(c.first_name) LIKE LOWER($1)
+      OR LOWER(c.last_name) LIKE LOWER($1)
+    `, [searchTerm]);
+    return results.rows.map(c => new Customer(c));
+  }
+
+  /** Top 10 customers with most reservations */
+
+  static async topTen() {
+    const results = await db.query(`
+      ${queryBase}
+      JOIN reservations AS r ON c.id = r.customer_id
+      GROUP BY (c.id)
+      ORDER BY COUNT(r.customer_id) DESC
+      LIMIT 10;
+    `);
+    return results.rows.map(c => new Customer(c));
   }
 }
 
