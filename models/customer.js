@@ -25,6 +25,10 @@ class Customer {
     return this.firstName + ' ' + this.lastName;
   }
 
+  get fullName() {
+    return this.firstName + " " + this.lastName;
+  }
+
   /** find all customers. */
 
   static async all() {
